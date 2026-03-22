@@ -68,20 +68,81 @@ local function banner()
     p("")
 end
 
+-- Fix dpkg interrupted
+local function fix_dpkg()
+    local out = exec("dpkg --configure -a 2>&1")
+    if out:find("dpkg") and out:find("error") then
+        p(R.."  [x] dpkg fix gagal"..NC)
+        return false
+    end
+    return true
+end
+
+-- Fix broken packages
+local function fix_packages()
+    p(Y.."  [~] Fixing broken packages..."..NC)
+    fix_dpkg()
+    exec_code("apt update -y > /dev/null 2>&1")
+    exec_code("apt full-upgrade -y > /dev/null 2>&1")
+    fix_dpkg()
+    p(G.."  [v] Packages fixed"..NC)
+end
+
+-- Install package dengan auto-fix
+local function pkg_install(name)
+    local out = exec("pkg install "..name.." -y 2>&1")
+
+    -- dpkg interrupted -> fix lalu retry
+    if out:find("dpkg was interrupted") or out:find("dpkg%-%-configure") then
+        p(Y.."  [!] dpkg interrupted, auto fixing..."..NC)
+        fix_dpkg()
+        out = exec("pkg install "..name.." -y 2>&1")
+    end
+
+    -- curl SSL link error -> full upgrade lalu retry
+    if out:find("CANNOT LINK") or out:find("SSL_set_quic") then
+        p(Y.."  [!] Library mismatch, upgrading packages..."..NC)
+        fix_packages()
+        out = exec("pkg install "..name.." -y 2>&1")
+    end
+
+    return check_cmd(name == "lua54" and "lua5.4" or name)
+end
+
 -- Cek dependensi
 local function ensure_deps()
     p(CY.."  [~] Cek dependensi..."..NC)
 
+    -- Auto fix dpkg jika interrupted
+    local dpkg_check = exec("pkg list-installed 2>&1")
+    if dpkg_check:find("dpkg was interrupted") or dpkg_check:find("dpkg%-%-configure") then
+        p(Y.."  [!] dpkg interrupted terdeteksi, auto fixing..."..NC)
+        fix_dpkg()
+    end
+
+    -- Cek curl, auto fix jika error
     if not check_cmd("curl") then
         p(Y.."  [!] curl tidak ada, menginstall..."..NC)
-        exec_code("pkg install curl -y > /dev/null 2>&1")
-        if not check_cmd("curl") then
-            p(R.."  [x] curl gagal diinstall! Jalankan: pkg install curl"..NC)
+        if not pkg_install("curl") then
+            p(R.."  [x] curl gagal diinstall!"..NC)
+            os.exit(1)
+        end
+    end
+
+    -- Test curl beneran jalan (bukan cuma ada tapi broken)
+    local curl_test = exec("curl --version 2>&1")
+    if curl_test:find("CANNOT LINK") or curl_test:find("SSL_set_quic") then
+        p(Y.."  [!] curl broken, auto fixing..."..NC)
+        fix_packages()
+        curl_test = exec("curl --version 2>&1")
+        if curl_test:find("CANNOT LINK") then
+            p(R.."  [x] curl masih broken! Jalankan manual: apt update && apt full-upgrade -y"..NC)
             os.exit(1)
         end
     end
     p(G.."  [v] curl"..NC)
 
+    -- Cek root
     local r = exec("su -c 'id' 2>/dev/null")
     restore_tty()
     if r:find("uid=0") then
