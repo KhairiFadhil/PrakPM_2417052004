@@ -54,6 +54,10 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import com.example.prakpm_2417052004.ui.theme.CardSecondary
+import com.example.prakpm_2417052004.ui.theme.FavoriteActive
+import com.example.prakpm_2417052004.ui.theme.TeksTipis
+import com.example.prakpm_2417052004.ui.theme.WarnaPrimaryTeks
 
 
 class MainActivity : ComponentActivity() {
@@ -84,17 +88,21 @@ fun FoodScreen(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(16.dp)
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
     ) {
         Text(
             text = "Selamat Datang, User!",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground
         )
+
         Text(
             text = "Mau makan apa hari ini?",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Normal
+            style = MaterialTheme.typography.bodyMedium,
+            color = TeksTipis
         )
         Spacer(modifier = Modifier.height(16.dp))
         ServiceRow(services = services)
@@ -130,7 +138,7 @@ fun ServiceItemCard(service: ServiceItem) {
             modifier = Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFFF3F3F3)),
+                .background(CardSecondary),
             contentAlignment = Alignment.Center
         ) {
             Image(
@@ -143,6 +151,7 @@ fun ServiceItemCard(service: ServiceItem) {
         Text(
             text = service.label,
             style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -200,10 +209,14 @@ fun FoodCard(food: Food) {
             .width(180.dp)
             .padding(4.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
+
+            // 🔥 Image + Favorite
             Box {
                 Image(
                     painter = painterResource(id = food.imageRes),
@@ -211,9 +224,15 @@ fun FoodCard(food: Food) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp)
-                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = 12.dp,
+                                topEnd = 12.dp
+                            )
+                        ),
                     contentScale = ContentScale.Crop
                 )
+
                 IconButton(
                     onClick = { isFavorite = !isFavorite },
                     modifier = Modifier
@@ -226,23 +245,38 @@ fun FoodCard(food: Food) {
                         else
                             Icons.Default.FavoriteBorder,
                         contentDescription = "Favorite",
-                        tint = if (isFavorite) Color.Red else Color.White
+                        tint = if (isFavorite)
+                            FavoriteActive
+                        else
+                            WarnaPrimaryTeks
                     )
                 }
             }
-            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+
+            // 🔥 Text Content
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 8.dp,
+                    vertical = 6.dp
+                )
+            ) {
+
+                // Nama + deskripsi
                 Text(
                     text = "${food.nama} ${food.deskripsi}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
                 Spacer(modifier = Modifier.height(2.dp))
+
+                // Harga (pakai primary sesuai modul)
                 Text(
                     text = "Rp ${String.format("%,d", food.harga)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
