@@ -1,5 +1,8 @@
 package com.example.prakpm_2417052004
-
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,8 +22,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,6 +49,12 @@ import model.Food
 import model.FoodSource
 import model.ServiceItem
 import model.ServiceSource
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,7 +62,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PrakPM_2417052004Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                    BottomNavBar()
+                }) { innerPadding ->
                     FoodScreen(
                         foods = FoodSource.dummyFood,
                         services = ServiceSource.dummyServices,
@@ -134,7 +151,50 @@ fun ServiceItemCard(service: ServiceItem) {
 }
 
 @Composable
+fun BottomNavBar() {
+    val navItemColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = Color(0xFF2BB673),
+        selectedTextColor = Color(0xFF2BB673),
+        unselectedIconColor = Color.Gray,
+        unselectedTextColor = Color.Gray,
+        indicatorColor = Color.Transparent
+    )
+
+    var selectedItem by remember { mutableStateOf(0) }
+
+    NavigationBar(
+        containerColor = Color.White,
+        contentColor = Color.Black
+    ) {
+        NavigationBarItem(
+            selected = selectedItem == 0,
+            onClick = { selectedItem = 0 },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+            label = { Text("Home") },
+            colors = navItemColors
+        )
+
+        NavigationBarItem(
+            selected = selectedItem == 1,
+            onClick = { selectedItem = 1 },
+            icon = { Icon(Icons.Default.Favorite, contentDescription = "Favorite") },
+            label = { Text("Favorite") },
+            colors = navItemColors
+        )
+
+        NavigationBarItem(
+            selected = selectedItem == 2,
+            onClick = { selectedItem = 2 },
+            icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
+            label = { Text("Profile") },
+            colors = navItemColors
+        )
+    }
+}
+@Composable
 fun FoodCard(food: Food) {
+    var isFavorite by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .width(180.dp)
@@ -154,6 +214,21 @@ fun FoodCard(food: Food) {
                         .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
                     contentScale = ContentScale.Crop
                 )
+                IconButton(
+                    onClick = { isFavorite = !isFavorite },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite)
+                            Icons.Default.Favorite
+                        else
+                            Icons.Default.FavoriteBorder,
+                        contentDescription = "Favorite",
+                        tint = if (isFavorite) Color.Red else Color.White
+                    )
+                }
             }
             Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
                 Text(
