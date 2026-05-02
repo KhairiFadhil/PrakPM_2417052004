@@ -25,14 +25,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +62,10 @@ import com.example.prakpm_2417052004.ui.theme.CardSecondary
 import com.example.prakpm_2417052004.ui.theme.FavoriteActive
 import com.example.prakpm_2417052004.ui.theme.TeksTipis
 import com.example.prakpm_2417052004.ui.theme.WarnaPrimaryTeks
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 class MainActivity : ComponentActivity() {
@@ -71,7 +79,6 @@ class MainActivity : ComponentActivity() {
                     BottomNavBar()
                 }) { innerPadding ->
                     FoodScreen(
-                        foods = FoodSource.dummyFood,
                         services = ServiceSource.dummyServices,
                         modifier = Modifier.padding(innerPadding)
                     )
@@ -81,12 +88,26 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private suspend fun fetchFoods(): List<Food> = withContext(Dispatchers.IO) {
+    delay(2000)
+    FoodSource.dummyFood
+}
+
 @Composable
 fun FoodScreen(
-    foods: List<Food>,
     services: List<ServiceItem>,
     modifier: Modifier = Modifier
 ) {
+    var foods by remember { mutableStateOf<List<Food>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        isLoading = true
+        foods = fetchFoods()
+        isLoading = false
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -107,11 +128,38 @@ fun FoodScreen(
         Spacer(modifier = Modifier.height(16.dp))
         ServiceRow(services = services)
         Spacer(modifier = Modifier.height(16.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+        Button(
+            onClick = {
+                scope.launch {
+                    isLoading = true
+                    foods = fetchFoods()
+                    isLoading = false
+                }
+            },
+            enabled = !isLoading
         ) {
-            items(foods) { food ->
-                FoodCard(food)
+            Text(if (isLoading) "Memuat..." else "Refresh Data")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(foods) { food ->
+                    FoodCard(food)
+                }
             }
         }
     }
@@ -215,8 +263,6 @@ fun FoodCard(food: Food) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-
-            // 🔥 Image + Favorite
             Box {
                 Image(
                     painter = painterResource(id = food.imageRes),
@@ -253,7 +299,6 @@ fun FoodCard(food: Food) {
                 }
             }
 
-            // 🔥 Text Content
             Column(
                 modifier = Modifier.padding(
                     horizontal = 8.dp,
@@ -272,7 +317,6 @@ fun FoodCard(food: Food) {
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                // Harga (pakai primary sesuai modul)
                 Text(
                     text = "Rp ${String.format("%,d", food.harga)}",
                     style = MaterialTheme.typography.bodySmall,
