@@ -1,13 +1,11 @@
-package com.example.prakpm_2417052004.network
+package com.example.prakpm_2417052004.data.api
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
-    // TODO: ganti dengan raw URL Gist kamu sendiri.
-    // Format: https://gist.githubusercontent.com/<username>/<gist_id>/
     private const val BASE_URL =
-        "https://gist.githubusercontent.com/USERNAME/GIST_ID/"
+        "https://gist.githubusercontent.com/KhairiFadhil/b697e426ab781e11cc8bedf320c6d8ac/raw/"
 
     val instance: ApiService by lazy {
         Retrofit.Builder()

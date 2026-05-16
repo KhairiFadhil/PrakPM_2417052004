@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -50,8 +52,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.prakpm_2417052004.ui.theme.PrakPM_2417052004Theme
 import coil.compose.AsyncImage
-import com.example.prakpm_2417052004.network.RetrofitClient
-import model.Food
+import com.example.prakpm_2417052004.data.model.Food
+import com.example.prakpm_2417052004.data.repository.FoodRepository
 import model.ServiceItem
 import model.ServiceSource
 import androidx.compose.material.icons.filled.Home
@@ -91,17 +93,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private suspend fun fetchFoods(): List<Food> = withContext(Dispatchers.IO) {
-    delay(1000)
-    RetrofitClient.instance.getFoods()
-}
-
 @Composable
 fun FoodScreen(
     services: List<ServiceItem>,
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
+    val repository = remember { FoodRepository() }
     var foods by remember { mutableStateOf<List<Food>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var isError by remember { mutableStateOf(false) }
@@ -109,10 +107,13 @@ fun FoodScreen(
     LaunchedEffect(Unit) {
         isLoading = true
         try {
-            foods = fetchFoods()
-            isError = false
+            withContext(Dispatchers.IO) { delay(800) }
+            val result = repository.getFoods()
+            foods = result
+            isError = result.isEmpty()
             isLoading = false
-            snackbarHostState.showSnackbar("Menu berhasil dimuat")
+            if (!isError) snackbarHostState.showSnackbar("Menu berhasil dimuat")
+            else snackbarHostState.showSnackbar("Gagal memuat data: periksa koneksi")
         } catch (e: Exception) {
             isLoading = false
             isError = true
@@ -182,8 +183,9 @@ fun FoodScreen(
                 }
             }
         } else {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
             ) {
                 items(foods) { food ->
                     FoodCard(food)
@@ -281,80 +283,64 @@ fun FoodCard(food: Food) {
     var isFavorite by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier
-            .width(180.dp)
-            .padding(4.dp),
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column {
-            Box {
-                AsyncImage(
-                    model = food.imageUrl,
-                    contentDescription = food.deskripsi,
-                    placeholder = painterResource(id = R.drawable.sate_ayam),
-                    error = painterResource(id = R.drawable.sate_padang),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = 12.dp,
-                                topEnd = 12.dp
-                            )
-                        ),
-                    contentScale = ContentScale.Crop
-                )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = food.imageUrl,
+                contentDescription = food.deskripsi,
+                placeholder = painterResource(id = R.drawable.sate_ayam),
+                error = painterResource(id = R.drawable.sate_padang),
+                modifier = Modifier
+                    .size(88.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
 
-                IconButton(
-                    onClick = { isFavorite = !isFavorite },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(alpha = 0.85f))
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite)
-                            Icons.Default.Favorite
-                        else
-                            Icons.Default.FavoriteBorder,
-                        contentDescription = "Favorite",
-                        tint = if (isFavorite)
-                            FavoriteActive
-                        else
-                            TeksTipis,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.width(12.dp))
 
-            Column(
-                modifier = Modifier.padding(
-                    horizontal = 8.dp,
-                    vertical = 6.dp
-                )
-            ) {
-
-                // Nama + deskripsi
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${food.nama} ${food.deskripsi}",
-                    style = MaterialTheme.typography.titleSmall,
+                    text = food.nama,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
                 Spacer(modifier = Modifier.height(2.dp))
-
+                Text(
+                    text = food.deskripsi,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TeksTipis,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "Rp ${String.format("%,d", food.harga)}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            IconButton(onClick = { isFavorite = !isFavorite }) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Favorite
+                                  else Icons.Default.FavoriteBorder,
+                    contentDescription = "Favorite",
+                    tint = if (isFavorite) FavoriteActive else TeksTipis
                 )
             }
         }
