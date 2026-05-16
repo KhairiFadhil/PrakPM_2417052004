@@ -1,10 +1,14 @@
 package model
 
-import androidx.annotation.DrawableRes
+import com.google.gson.annotations.SerializedName
 
-data class Food (
+data class Food(
+    @SerializedName("nama")
     val nama: String,
+    @SerializedName("deskripsi")
     val deskripsi: String,
+    @SerializedName("harga")
     val harga: Int,
-    @DrawableRes val imageRes: Int,
+    @SerializedName("image_url")
+    val imageUrl: String,
 )

@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,10 +32,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,8 +49,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.prakpm_2417052004.ui.theme.PrakPM_2417052004Theme
+import coil.compose.AsyncImage
+import com.example.prakpm_2417052004.network.RetrofitClient
 import model.Food
-import model.FoodSource
 import model.ServiceItem
 import model.ServiceSource
 import androidx.compose.material.icons.filled.Home
@@ -61,10 +62,8 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import com.example.prakpm_2417052004.ui.theme.CardSecondary
 import com.example.prakpm_2417052004.ui.theme.FavoriteActive
 import com.example.prakpm_2417052004.ui.theme.TeksTipis
-import com.example.prakpm_2417052004.ui.theme.WarnaPrimaryTeks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 
@@ -74,12 +73,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PrakPM_2417052004Theme {
+                val snackbarHostState = remember { SnackbarHostState() }
                 Scaffold(modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                    BottomNavBar()
-                }) { innerPadding ->
+                        BottomNavBar()
+                    },
+                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+                ) { innerPadding ->
                     FoodScreen(
                         services = ServiceSource.dummyServices,
+                        snackbarHostState = snackbarHostState,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -89,23 +92,32 @@ class MainActivity : ComponentActivity() {
 }
 
 private suspend fun fetchFoods(): List<Food> = withContext(Dispatchers.IO) {
-    delay(2000)
-    FoodSource.dummyFood
+    delay(1000)
+    RetrofitClient.instance.getFoods()
 }
 
 @Composable
 fun FoodScreen(
     services: List<ServiceItem>,
+    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
     var foods by remember { mutableStateOf<List<Food>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
+    var isError by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         isLoading = true
-        foods = fetchFoods()
-        isLoading = false
+        try {
+            foods = fetchFoods()
+            isError = false
+            isLoading = false
+            snackbarHostState.showSnackbar("Menu berhasil dimuat")
+        } catch (e: Exception) {
+            isLoading = false
+            isError = true
+            snackbarHostState.showSnackbar("Gagal memuat data: periksa koneksi")
+        }
     }
 
     Column(
@@ -125,24 +137,17 @@ fun FoodScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = TeksTipis
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
         ServiceRow(services = services)
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = {
-                scope.launch {
-                    isLoading = true
-                    foods = fetchFoods()
-                    isLoading = false
-                }
-            },
-            enabled = !isLoading
-        ) {
-            Text(if (isLoading) "Memuat..." else "Refresh Data")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Menu Pilihan",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(12.dp))
 
         if (isLoading) {
             Box(
@@ -152,6 +157,29 @@ fun FoodScreen(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
+            }
+        } else if (isError || foods.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Gagal Memuat Data",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Pastikan koneksi internet Anda menyala",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TeksTipis,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         } else {
             LazyRow(
@@ -210,18 +238,18 @@ fun ServiceItemCard(service: ServiceItem) {
 @Composable
 fun BottomNavBar() {
     val navItemColors = NavigationBarItemDefaults.colors(
-        selectedIconColor = Color(0xFF2BB673),
-        selectedTextColor = Color(0xFF2BB673),
-        unselectedIconColor = Color.Gray,
-        unselectedTextColor = Color.Gray,
+        selectedIconColor = MaterialTheme.colorScheme.primary,
+        selectedTextColor = MaterialTheme.colorScheme.primary,
+        unselectedIconColor = TeksTipis,
+        unselectedTextColor = TeksTipis,
         indicatorColor = Color.Transparent
     )
 
     var selectedItem by remember { mutableStateOf(0) }
 
     NavigationBar(
-        containerColor = Color.White,
-        contentColor = Color.Black
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         NavigationBarItem(
             selected = selectedItem == 0,
@@ -264,9 +292,11 @@ fun FoodCard(food: Food) {
     ) {
         Column {
             Box {
-                Image(
-                    painter = painterResource(id = food.imageRes),
+                AsyncImage(
+                    model = food.imageUrl,
                     contentDescription = food.deskripsi,
+                    placeholder = painterResource(id = R.drawable.sate_ayam),
+                    error = painterResource(id = R.drawable.sate_padang),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp)
@@ -283,7 +313,10 @@ fun FoodCard(food: Food) {
                     onClick = { isFavorite = !isFavorite },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                        .padding(6.dp)
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.85f))
                 ) {
                     Icon(
                         imageVector = if (isFavorite)
@@ -294,7 +327,8 @@ fun FoodCard(food: Food) {
                         tint = if (isFavorite)
                             FavoriteActive
                         else
-                            WarnaPrimaryTeks
+                            TeksTipis,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
